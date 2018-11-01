@@ -1,44 +1,163 @@
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# React 16
 
-## Available Scripts
+### return types
 
-In the project directory, you can run:
+- 이전에는 return component or null.
+- React 16 에서는 String 리턴 가능.
+- Fragment 태그를 사용해서 필요없는 span 태그의 사용을 없앰.
 
-### `npm start`
+### portals
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+- React 는 div 를 찾아서 마운트함.
+- 마운트된 div 이외의 영역을 변경하고 싶을 때.
 
-The page will reload if you make edits.<br>
-You will also see any lint errors in the console.
+### Error Boundaries
 
-### `npm test`
+- 컴포넌트로 하여금 자식의 에러를 관리할 수 있게함.
+- 자식의 에러에만 한정으로 관리 가능하기 때문에 portals 의 에러는 캐치불가.
 
-Launches the test runner in the interactive watch mode.<br>
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+```html
+<body>
+  <noscript>
+    You need to enable JavaScript to run this app.
+  </noscript>
+  <header>
+    <h1>Can't touch this</h1>
+    <span id="touchme"></span>
+  </header>
+  <div id="root"></div>
+  <!--
+      This HTML file is a template.
+      If you open it directly in the browser, you will see an empty page.
 
-### `npm run build`
+      You can add webfonts, meta tags, or analytics to this file.
+      The build step will place the bundled scripts into the <body> tag.
 
-Builds the app for production to the `build` folder.<br>
-It correctly bundles React in production mode and optimizes the build for the best performance.
+      To begin the development, run `npm start` or `yarn start`.
+      To create a production bundle, use `npm run build` or `yarn build`.
+    -->
+</body>
+```
 
-The build is minified and the filenames include the hashes.<br>
-Your app is ready to be deployed!
+```js
+import React, { Component, Fragment } from "react";
+import { createPortal } from "react-dom";
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+const BoundaryHOC = ProtectedComponent =>
+  class BoundaryHOC extends Component {
+    state = {
+      hasError: false
+    };
+    componentDidCatch = () => {
+      this.setState({
+        hasError: true
+      });
+    };
+    render() {
+      const { hasError } = this.state;
+      if (hasError) {
+        return <ErrorFallback />;
+      } else {
+        return <ProtectedComponent />;
+      }
+    }
+  };
 
-### `npm run eject`
+class ErrorMaker extends Component {
+  state = {
+    friends: ["song", "eun", "jeong"]
+  };
+  componentDidMount = () => {
+    setTimeout(() => {
+      this.setState({
+        friends: undefined
+      });
+    }, 2000);
+  };
+  render() {
+    const { friends } = this.state;
+    return friends.map(friend => ` ${friend} `);
+  }
+}
 
-**Note: this is a one-way operation. Once you `eject`, you can’t go back!**
+const PErrorMaker = BoundaryHOC(ErrorMaker);
 
-If you aren’t satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+class Portals extends Component {
+  render() {
+    return createPortal(<Message />, document.getElementById("touchme"));
+  }
+}
 
-Instead, it will copy all the configuration files and the transitive dependencies (Webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you’re on your own.
+const Message = () => "Just touched it!";
 
-You don’t have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn’t feel obligated to use this feature. However we understand that this tool wouldn’t be useful if you couldn’t customize it when you are ready for it.
+const PPortals = BoundaryHOC(Portals);
 
-## Learn More
+class ReturnTypes extends Component {
+  render() {
+    return "hello ";
+  }
+}
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+const ErrorFallback = () => "Sorry something went wrong";
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+class App extends Component {
+  render() {
+    return (
+      <Fragment>
+        <ReturnTypes />
+        <PPortals />
+        <PErrorMaker />
+      </Fragment>
+    );
+  }
+}
+
+export default App;
+```
+
+### this.state = null
+
+- set State null 을 이용하면, 컴포넌트의 업데이트 시점을 조작 가능.
+- set State Function 을 아래와 같이 따로 코딩 가능.
+
+```js
+import React, { Component } from "react";
+
+const MAX_PIZZAS = 20;
+
+const eatPizza = (state, props) => {
+  const { pizzas } = state;
+  if (pizzas < MAX_PIZZAS) {
+    return {
+      pizzas: pizzas + 1
+    };
+  } else {
+    return null;
+  }
+};
+
+class Controlled extends Component {
+  state = {
+    pizzas: 0
+  };
+  render() {
+    const { pizzas } = this.state;
+    return (
+      <button onClick={this._handleClick}>{`I have eaten ${pizzas} ${
+        pizzas === 1 ? "pizza" : "pizzas"
+      }`}</button>
+    );
+  }
+  _handleClick = () => {
+    this.setState(eatPizza);
+  };
+}
+
+class App extends Component {
+  render() {
+    return <Controlled />;
+  }
+}
+
+export default App;
+```
